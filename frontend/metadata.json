@@ -1,0 +1,6 @@
+{
+  "name": "Foxico AI Travel Super-App",
+  "description": "Intelligent multimodal travel orchestration super-app for flights, high-speed rail, intercity buses, and luxury stays with autonomous AI trip planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
