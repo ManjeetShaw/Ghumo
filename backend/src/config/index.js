@@ -20,6 +20,16 @@ const config = {
     trainKey: process.env.TRAIN_PROVIDER_KEY || 'mock',
     busKey: process.env.BUS_PROVIDER_KEY || 'mock',
     hotelKey: process.env.HOTEL_PROVIDER_KEY || 'mock',
+  },
+  railRadar: {
+    apiKey: process.env.RAILRADAR_API_KEY || '',
+    baseUrl: 'https://api.railradar.in/v1',
+  },
+  aviationStack: {
+    apiKey: process.env.AVIATIONSTACK_API_KEY || '',
+    // Free-tier Aviationstack keys only work over plain HTTP (HTTPS is a
+    // paid-plan feature); override with AVIATIONSTACK_BASE_URL once upgraded.
+    baseUrl: process.env.AVIATIONSTACK_BASE_URL || 'http://api.aviationstack.com/v1',
   }
 };
 

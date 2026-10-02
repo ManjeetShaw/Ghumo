@@ -2,26 +2,39 @@ const MockFlightAdapter = require('./adapters/MockFlightAdapter');
 const MockTrainAdapter = require('./adapters/MockTrainAdapter');
 const MockBusAdapter = require('./adapters/MockBusAdapter');
 const MockHotelAdapter = require('./adapters/MockHotelAdapter');
+const RailRadarTrainAdapter = require('./adapters/RailRadarTrainAdapter');
+const AviationStackFlightAdapter = require('./adapters/AviationStackFlightAdapter');
+const config = require('../config');
 
 class ProviderRegistry {
   constructor() {
     this.adapters = new Map();
 
     // Register Default Mock Adapters
-    const defaultFlight = new MockFlightAdapter();
-    const defaultTrain = new MockTrainAdapter();
+    const mockFlight = new MockFlightAdapter();
+    const aviationStackFlight = new AviationStackFlightAdapter();
+    const mockTrain = new MockTrainAdapter();
+    const railRadarTrain = new RailRadarTrainAdapter();
     const defaultBus = new MockBusAdapter();
     const defaultHotel = new MockHotelAdapter();
 
-    this.adapters.set(defaultFlight.providerId, defaultFlight);
-    this.adapters.set(defaultTrain.providerId, defaultTrain);
+    this.adapters.set(mockFlight.providerId, mockFlight);
+    this.adapters.set(aviationStackFlight.providerId, aviationStackFlight);
+    this.adapters.set(mockTrain.providerId, mockTrain);
+    this.adapters.set(railRadarTrain.providerId, railRadarTrain);
     this.adapters.set(defaultBus.providerId, defaultBus);
     this.adapters.set(defaultHotel.providerId, defaultHotel);
 
+    // Train/Flight: use the real provider once its API key is set,
+    // otherwise keep using the sample adapter. Each real adapter also
+    // falls back to sample data internally if a live call or quota fails.
+    const defaultTrainId = config.railRadar.apiKey ? railRadarTrain.providerId : mockTrain.providerId;
+    const defaultFlightId = config.aviationStack.apiKey ? aviationStackFlight.providerId : mockFlight.providerId;
+
     // Map category defaults
     this.categoryDefaults = {
-      FLIGHT: defaultFlight.providerId,
-      TRAIN: defaultTrain.providerId,
+      FLIGHT: defaultFlightId,
+      TRAIN: defaultTrainId,
       BUS: defaultBus.providerId,
       HOTEL: defaultHotel.providerId,
     };
