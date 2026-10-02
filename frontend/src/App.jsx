@@ -36,8 +36,13 @@ export default function App() {
   const [bookingDraft, setBookingDraft] = useState(null);
   const [activeConfirmedBooking, setActiveConfirmedBooking] = useState(null);
 
-  // Load notifications unread count
+  // Load notifications unread count - only once the user is actually logged
+  // in, since /api/notifications requires auth and otherwise 401s forever.
   useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
     async function loadNotifMeta() {
       try {
         const res = await notificationApi.getNotifications();
@@ -51,7 +56,7 @@ export default function App() {
     loadNotifMeta();
     const interval = setInterval(loadNotifMeta, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const handleProceedToCheckout = (draft) => {
     setBookingDraft(draft);

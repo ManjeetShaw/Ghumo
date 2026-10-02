@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { notificationApi } from '../api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function NotificationDrawer({ isOpen, onClose, onNotificationClick }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAuthenticated) {
       loadNotifications();
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated]);
 
   async function loadNotifications() {
     setLoading(true);
