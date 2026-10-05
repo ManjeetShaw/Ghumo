@@ -1,7 +1,7 @@
 const searchService = require('./search.service');
 const tripService = require('./trip.service');
 const logger = require('../utils/logger');
-const { generateText } = require('../story/geminiClient');
+const { generateText } = require('../utils/geminiClient');
 
 function unavailable(err) {
   const error = new Error(`AI service is unavailable: ${err.message}`);
