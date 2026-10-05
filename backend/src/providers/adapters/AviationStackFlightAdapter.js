@@ -85,4 +85,120 @@ class AviationStackFlightAdapter extends BaseProvider {
   buildRaw(flight, origin, destination) {
     const dep = flight.departure || {};
     const arr = flight.arrival || {};
-    const departureTime = dep.scheduled ? new
+    const departureTime = dep.scheduled ? new Date(dep.scheduled) : new Date();
+    const arrivalTime = arr.scheduled ? new Date(arr.scheduled) : new Date(departureTime.getTime() + 7200000);
+    const durationMinutes = Math.max(20, Math.round((arrivalTime - departureTime) / 60000));
+    const stops = 0; // Aviationstack's /flights endpoint reports direct legs only
+
+    const flightKey = `${flight.flight?.iata || flight.flight?.number}-${origin}-${destination}`;
+    const { base, taxes, total } = estimateFare(durationMinutes, stops);
+    const hash = seedHash(flightKey);
+
+    return {
+      id: `AVS-${flight.flight?.iata || flight.flight?.number || hash}`,
+      flightNumber: flight.flight?.iata || flight.flight?.number || 'N/A',
+      airlineName: flight.airline?.name || 'Unknown Airline',
+      airlineCode: flight.airline?.iata || '',
+      originCode: dep.iata || origin,
+      originCity: dep.airport || origin,
+      originAirport: dep.airport || '',
+      destinationCode: arr.iata || destination,
+      destinationCity: arr.airport || destination,
+      destinationAirport: arr.airport || '',
+      departureTime,
+      arrivalTime,
+      durationMinutes,
+      stops,
+      cabinClass: 'Economy',
+      seatsAvailable: (hash % 40) + 2, // synthetic - Aviationstack has no inventory/seat data
+      baseFare: base,
+      taxAmount: taxes,
+      totalFare: total,
+      currency: 'INR',
+    };
+  }
+
+  async fetchFromApi(origin, destination, date) {
+    const url = new URL(`${config.aviationStack.baseUrl}/flights`);
+    url.searchParams.set('access_key', config.aviationStack.apiKey);
+    url.searchParams.set('dep_iata', origin.toUpperCase());
+    url.searchParams.set('arr_iata', destination.toUpperCase());
+    if (date) url.searchParams.set('flight_date', date);
+    url.searchParams.set('limit', '15');
+
+    const res = await fetch(url.toString());
+    const body = await res.json().catch(() => ({}));
+
+    if (!res.ok || body.error) {
+      const error = new Error(body?.error?.info || body?.error?.message || `Aviationstack request failed (${res.status})`);
+      error.statusCode = res.status;
+      throw error;
+    }
+    return body.data || [];
+  }
+
+  async search(params = {}) {
+    const { origin, destination, date } = params;
+    if (!origin || !destination) {
+      return this.mockFallback.search(params);
+    }
+    if (!this.isConfigured()) {
+      logger.warn('[Aviationstack] AVIATIONSTACK_API_KEY not set; falling back to sample flight data');
+      return this.mockFallback.search(params);
+    }
+
+    const cacheKey = this.cacheKey(origin.toUpperCase(), destination.toUpperCase(), date);
+    const cached = await this.getCached(cacheKey);
+    if (cached) {
+      logger.info(`[Aviationstack] Cache hit for ${origin}->${destination} (saved a quota call)`);
+      return cached.map((raw) => normalizeFlight(raw, this.providerId));
+    }
+
+    const reservation = await this.limiter.reserve();
+    if (!reservation.allowed) {
+      logger.warn(
+        `[Aviationstack] Rate/quota limit hit (${reservation.reason}); falling back to sample flight data ` +
+          `(month usage: ${reservation.monthCount || '?'}/95)`
+      );
+      return this.mockFallback.search(params);
+    }
+
+    try {
+      const rawFlights = await this.fetchFromApi(origin, destination, date);
+      if (rawFlights.length === 0) {
+        // Real route genuinely has no scheduled flights in Aviationstack's
+        // data for today; sample data is more useful to the user than empty results.
+        return this.mockFallback.search(params);
+      }
+
+      const built = rawFlights.map((f) => this.buildRaw(f, origin.toUpperCase(), destination.toUpperCase()));
+      await this.setCached(cacheKey, built);
+      return built.map((raw) => normalizeFlight(raw, this.providerId));
+    } catch (err) {
+      logger.warn(`[Aviationstack] Search failed (${err.message}); falling back to sample flight data`);
+      return this.mockFallback.search(params);
+    }
+  }
+
+  async getDetails(id) {
+    const results = await this.search({ origin: 'DEL', destination: 'BOM' });
+    const found = results.find((f) => f.id === id || f.flightNumber === id);
+    if (!found) throw new Error(`Flight ${id} not found`);
+    return found;
+  }
+
+  async checkAvailability(id, params = {}) {
+    return this.mockFallback.checkAvailability(id, params);
+  }
+
+  async createReservation(reservationData) {
+    // Aviationstack is read-only (schedules/tracking); it has no booking API.
+    return this.mockFallback.createReservation(reservationData);
+  }
+
+  async cancelReservation(providerBookingRef) {
+    return this.mockFallback.cancelReservation(providerBookingRef);
+  }
+}
+
+module.exports = AviationStackFlightAdapter;
