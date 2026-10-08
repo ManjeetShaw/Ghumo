@@ -9,7 +9,8 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev_jwt_secret_key_change_in_prod',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  textModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  textModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID || '',
     keySecret: process.env.RAZORPAY_KEY_SECRET || '',
