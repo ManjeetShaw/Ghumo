@@ -5,6 +5,7 @@ export default function AIAssistantPage({ onNavigate }) {
   const [prompt, setPrompt] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState(null);
+  const [searchError, setSearchError] = useState('');
 
   // Itinerary Generator state
   const [dest, setDest] = useState('Jaipur');
@@ -13,18 +14,22 @@ export default function AIAssistantPage({ onNavigate }) {
   const [generating, setGenerating] = useState(false);
   const [generatedTrip, setGeneratedTrip] = useState(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [genError, setGenError] = useState('');
 
   const handleSearchSubmit = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) return;
     setSearching(true);
+    setSearchError('');
     try {
       const res = await aiApi.travelSearch(prompt);
       if (res.success && res.data) {
         setSearchResult(res.data);
+      } else {
+        setSearchError(res.error?.message || 'Search failed');
       }
     } catch (err) {
-      console.error('AI search error:', err);
+      setSearchError(err.message || 'Search failed');
     } finally {
       setSearching(false);
     }
@@ -34,6 +39,7 @@ export default function AIAssistantPage({ onNavigate }) {
     e.preventDefault();
     setGenerating(true);
     setSavedSuccess(false);
+    setGenError('');
     try {
       const res = await aiApi.generateItinerary({
         destination: dest,
@@ -43,9 +49,11 @@ export default function AIAssistantPage({ onNavigate }) {
       });
       if (res.success && res.data) {
         setGeneratedTrip(res.data);
+      } else {
+        setGenError(res.error?.message || 'Itinerary generation failed');
       }
     } catch (err) {
-      console.error('AI itinerary error:', err);
+      setGenError(err.message || 'Itinerary generation failed');
     } finally {
       setGenerating(false);
     }
@@ -54,11 +62,8 @@ export default function AIAssistantPage({ onNavigate }) {
   const handleSaveToTrips = async () => {
     if (!generatedTrip) return;
     try {
-      // If the user was authenticated when the itinerary was generated, the
-      // backend already persisted it as a Trip in the same call (see
-      // ai.service.js generateItinerary). Creating another Trip here would
-      // just duplicate it, so only fall back to a manual create when that
-      // didn't happen (e.g. the itinerary was generated as a guest).
+      // If the user was logged in, the backend already saved this trip when
+      // it generated the itinerary, so creating another would duplicate it.
       if (generatedTrip.alreadySaved) {
         setSavedSuccess(true);
         return;
@@ -117,7 +122,7 @@ export default function AIAssistantPage({ onNavigate }) {
 
         <div className="flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-full border border-surface-container-high">
           <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse" />
-          <span className="font-label-sm text-xs text-on-surface font-semibold">Gemini AI Connected</span>
+          <span className="font-label-sm text-xs text-on-surface font-semibold">Powered by Gemini</span>
         </div>
       </div>
 
@@ -129,6 +134,10 @@ export default function AIAssistantPage({ onNavigate }) {
               <span className="material-symbols-outlined text-primary text-[20px]">chat</span>
               Natural Language Multimodal Search
             </h2>
+
+            {searchError && (
+              <div className="p-3 rounded-xl bg-error/20 text-error text-xs">{searchError}</div>
+            )}
 
             <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3">
               <div className="relative">
@@ -180,11 +189,11 @@ export default function AIAssistantPage({ onNavigate }) {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 rounded bg-surface-container">
                     <span className="text-on-surface-variant block text-[10px]">Origin:</span>
-                    <span className="font-bold text-white">{searchResult.intent?.origin || 'Delhi'}</span>
+                    <span className="font-bold text-white">{searchResult.intent?.origin || '—'}</span>
                   </div>
                   <div className="p-2 rounded bg-surface-container">
                     <span className="text-on-surface-variant block text-[10px]">Destination:</span>
-                    <span className="font-bold text-white">{searchResult.intent?.destination || 'Bali'}</span>
+                    <span className="font-bold text-white">{searchResult.intent?.destination || '—'}</span>
                   </div>
                 </div>
 
@@ -210,6 +219,10 @@ export default function AIAssistantPage({ onNavigate }) {
               AI Tour & Expedition Generator
             </h2>
 
+            {genError && (
+              <div className="p-3 rounded-xl bg-error/20 text-error text-xs">{genError}</div>
+            )}
+
             <form onSubmit={handleGenerateItinerary} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] text-on-surface-variant uppercase font-bold block mb-1">Destination</label>
@@ -224,16 +237,14 @@ export default function AIAssistantPage({ onNavigate }) {
 
               <div>
                 <label className="text-[10px] text-on-surface-variant uppercase font-bold block mb-1">Days</label>
-                <select
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
                   value={days}
                   onChange={(e) => setDays(Number(e.target.value))}
                   className="w-full bg-surface-container-high px-3 py-2 rounded-xl text-white font-title-md text-xs border border-surface-container-high focus:outline-none"
-                >
-                  <option value="2">2 Days</option>
-                  <option value="3">3 Days</option>
-                  <option value="4">4 Days</option>
-                  <option value="5">5 Days</option>
-                </select>
+                />
               </div>
 
               <div>
@@ -268,7 +279,7 @@ export default function AIAssistantPage({ onNavigate }) {
                 <div className="flex items-center justify-between border-b border-surface-container-high pb-2">
                   <div>
                     <h3 className="font-bold text-white text-sm">{generatedTrip.title}</h3>
-                    <span className="text-xs text-secondary font-mono">{generatedTrip.days} Days • ₹{generatedTrip.budget?.totalBudget} Target Budget</span>
+                    <span className="text-xs text-secondary font-mono">{generatedTrip.daysCount} Days • ₹{generatedTrip.budget?.totalBudget} Target Budget</span>
                   </div>
                   <button
                     onClick={handleSaveToTrips}
