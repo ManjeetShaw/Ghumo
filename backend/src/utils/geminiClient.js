@@ -8,11 +8,15 @@ async function callGeminiWithFallback(body, { retries = 4 } = {}) {
       'GEMINI_API_KEY is not set. Get a free key at https://aistudio.google.com/apikey and add it to .env'
     );
   }
-  textModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
-  
-  let lastError;  
+  const textModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
-  for (const model of candidateModels) {
+const candidateModels = [
+  textModel
+];
+
+let lastError;
+
+for (const model of candidateModels) {
     const url = `${BASE_URL}/${model}:generateContent?key=${config.geminiApiKey}`;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
