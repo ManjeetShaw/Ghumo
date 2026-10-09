@@ -4,9 +4,14 @@ const logger = require('../utils/logger');
 const { generateText } = require('../utils/geminiClient');
 
 function unavailable(err) {
-  const error = new Error(`AI service is unavailable: ${err.message}`);
-  error.statusCode = 503;
-  error.errorCode = 'AI_UNAVAILABLE';
+  const busy = /quota|429|RESOURCE_EXHAUSTED/i.test(err.message);
+  const error = new Error(
+    busy
+      ? 'The AI is busy right now (free-tier limit). Please wait about a minute and try again.'
+      : `AI service is unavailable: ${err.message}`
+  );
+  error.statusCode = busy ? 429 : 503;
+  error.errorCode = busy ? 'AI_BUSY' : 'AI_UNAVAILABLE';
   return error;
 }
 
