@@ -128,10 +128,10 @@ export default function LandingPage() {
               />
               <div className="flex flex-col">
                 <span className="text-xl font-bold tracking-tight text-white group-hover:text-[#89ceff] transition-colors leading-tight">
-                  Foxico
+                  T&T
                 </span>
                 <span className="text-[10px] text-[#ffb95f] -mt-0.5 tracking-[0.2em] uppercase font-bold">
-                  AI Voyage
+                  Tour & Travel
                 </span>
               </div>
             </a>
@@ -169,7 +169,7 @@ export default function LandingPage() {
               className="hidden md:flex items-center gap-2 bg-[#1a2e26]/70 hover:bg-[#253931] px-3.5 py-1.5 rounded-full text-[#bec8d2] hover:text-white transition-all text-xs border border-white/5"
             >
               <span className="material-symbols-outlined text-[17px]">search</span>
-              <span>Search voyages...</span>
+              <span>Search Place...</span>
               <kbd className="bg-[#253931] px-1.5 py-0.5 rounded text-[10px] text-[#89ceff] font-mono font-bold">
                 ⌘K
               </kbd>
@@ -233,13 +233,13 @@ export default function LandingPage() {
             <div className="pointer-events-auto flex items-center gap-2 bg-[#10231c]/70 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/10 shadow-lg text-xs">
               <span className="w-2 h-2 rounded-full bg-[#ffb95f] animate-ping" />
               <span className="text-[#ffb95f] uppercase tracking-wider font-bold">
-                Foxico AI Voyagers Special
+              Trusted Tour & Travel
               </span>
               <span className="text-[#bec8d2]">Use code</span>
               <span className="text-[#003751] bg-[#0ea5e9] px-2 py-0.5 rounded font-extrabold tracking-wider">
-                WELCOME10
+                WELCOME
               </span>
-              <span className="text-[#a3d0c4] font-semibold">10% Off Voyages</span>
+              <span className="text-[#a3d0c4] font-semibold">10% Off On Tours</span>
             </div>
 
             <div className="pointer-events-auto hidden sm:flex items-center gap-1.5 bg-[#1a2e26]/70 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs text-[#bec8d2] border border-white/10">
@@ -1253,19 +1253,19 @@ export default function LandingPage() {
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2 flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src="https://lh3.googleusercontent.com/aida/AEtjO1UwrMJZkvQJ9xRZ9LcWkk1bREkp7gj0p3L7b7RvETVWrkDRKrYqUIOzrojxTBdzy8l_QwXfnbG7dixnZTHQ4yOyk45I-GznPQWEH8xxM0dyglL4gl03vGUx1GTqiG0vXs8OjG3761JVaJz1fOD8Vg431duuilnrw3CrQF81221uGbWN5dyuDQ9dCv33-2hUR241t7DmNH9c-x_xbzsvWI_lYC8IJ-6ejmppdWojcXGnPwP4hooyL9wHrg"
-                  alt="Foxico AI Logo"
-                  className="h-7 w-auto object-contain"
-                  referrerPolicy="no-referrer"
-                />
-                <span className="text-xl font-bold text-white">Foxico AI</span>
-              </div>
-              <p className="text-sm text-[#bec8d2] max-w-sm leading-relaxed">
-                Intelligent travel orchestration blending bespoke itineraries, high-speed rail,
-                seamless intercity transit, and cinematic luxury stays worldwide.
-              </p>
+            <div className="flex items-center gap-2.5">
+      <span className="text-2xl font-extrabold tracking-tight text-white">
+      T<span className="text-[#0788f9]">&</span>T
+      </span>
+    <span className="text-xs font-semibold tracking-wide text-[#bec8d2]">
+    Tour and Travel
+    </span>
+  </div>
+
+<p className="text-sm text-[#bec8d2] max-w-sm leading-relaxed">
+  Discover seamless journeys, personalized itineraries, effortless bookings,
+  and unforgettable travel experiences with T&T.
+</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#a3d0c4] animate-pulse" />
                 <span className="text-xs text-[#a3d0c4] font-medium">
@@ -1327,7 +1327,7 @@ export default function LandingPage() {
           </div>
 
           <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#bec8d2]">
-            <p>© 2025 Foxico AI Travel Technologies Inc. All rights reserved.</p>
+            <p>T&T Technologies Inc. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <a href="#" className="hover:text-white transition-colors">
                 Terms
