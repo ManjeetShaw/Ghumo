@@ -24,7 +24,7 @@ function normalizeBus(rawBus, providerId) {
     fare: rawBus.fare || rawBus.price || 699,
     currency: rawBus.currency || 'INR',
     seatsAvailable: rawBus.seatsAvailable || 18,
-    rating: rawBus.rating || 4.6,
+    rating: rawBus.rating ?? null,
     amenities: rawBus.amenities || ['WiFi', 'Charging Point', 'Water Bottle', 'Blanket', 'Live Tracking'],
     raw: rawBus,
   };

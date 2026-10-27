@@ -15,15 +15,6 @@ class BookingController {
     }
   }
 
-  async confirmBooking(req, res, next) {
-    try {
-      const booking = await bookingService.confirmBooking(req.params.id);
-      return successResponse(res, { booking }, 'Booking confirmed successfully', 200);
-    } catch (err) {
-      next(err);
-    }
-  }
-
   async cancelBooking(req, res, next) {
     try {
       const { reason } = req.body;

@@ -17,7 +17,6 @@ class MockHotelAdapter extends BaseProvider {
         city: city,
         country: 'India',
         rating: 4.9,
-        reviewsCount: 3420,
         amenities: ['Infiniti Pool', 'Luxury Spa', 'Fine Dining', 'Butler Service', 'Free High-Speed WiFi'],
         rooms: [
           {
@@ -45,7 +44,6 @@ class MockHotelAdapter extends BaseProvider {
         city: city,
         country: 'India',
         rating: 4.5,
-        reviewsCount: 1850,
         amenities: ['Outdoor Pool', '24h Fitness Center', 'Airport Shuttle', 'Free Breakfast'],
         rooms: [
           {

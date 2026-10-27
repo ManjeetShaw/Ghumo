@@ -1,200 +1,134 @@
 import React, { useState } from 'react';
 import { bookingApi } from '../api.js';
+import { canCancel, describeBooking, isCancelled, statusLabel, statusTone } from '../utils/bookingStatus.js';
+import { formatDate, formatINR, formatTime } from '../utils/date.js';
 
-export default function TicketConfirmationPage({ booking, onBackToDashboard, onNavigateToTrips }) {
-  const [currentBooking, setCurrentBooking] = useState(booking);
+function Row({ label, value }) {
+  if (value === undefined || value === null || value === '') return null;
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <dt className="text-on-surface-variant">{label}</dt>
+      <dd className="text-on-surface font-semibold text-right">{value}</dd>
+    </div>
+  );
+}
+
+export default function TicketConfirmationPage({ booking, onBackToBookings }) {
+  const [current, setCurrent] = useState(booking);
   const [cancelling, setCancelling] = useState(false);
-  const [cancelStatus, setCancelStatus] = useState(null);
+  const [message, setMessage] = useState(null); // { type, text }
 
-  const handleCancelBooking = async () => {
-    if (!window.confirm("Are you sure you want to cancel this confirmed reservation? A refund will be initiated.")) {
-      return;
-    }
+  if (!current) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-20 text-center text-sm text-on-surface-variant">
+        No booking selected.{' '}
+        <button onClick={onBackToBookings} className="text-primary underline">Go to My bookings</button>
+      </div>
+    );
+  }
+
+  const info = describeBooking(current);
+  const d = current.itemDetails || {};
+  const p = current.pricing || {};
+  const cancelled = isCancelled(current.status);
+
+  const handleCancel = async () => {
+    if (!window.confirm('Cancel this booking? Refund eligibility depends on the provider\'s cancellation rules.')) return;
     setCancelling(true);
+    setMessage(null);
     try {
-      const res = await bookingApi.cancelBooking(currentBooking._id, "Travel plans rescheduled by passenger");
+      const res = await bookingApi.cancelBooking(current._id, 'Cancelled by customer');
       if (res.success && res.data) {
-        setCurrentBooking(res.data);
-        setCancelStatus("Reservation cancelled. Full refund processing to original payment source.");
+        setCurrent(res.data);
+        setMessage({ type: 'ok', text: 'Your cancellation was recorded. Refund status will show here and in My bookings.' });
+      } else {
+        setMessage({ type: 'error', text: res.error?.message || 'Could not cancel this booking.' });
       }
     } catch (err) {
-      console.error("Cancellation error:", err);
+      setMessage({ type: 'error', text: 'Could not cancel this booking. Please try again.' });
     } finally {
       setCancelling(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const isCancelled = ['CANCELLED', 'CANCELLATION_PENDING', 'REFUND_PENDING', 'REFUNDED'].includes(currentBooking?.status);
-
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 lg:px-8 py-8 flex flex-col gap-8">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface-container-low p-6 rounded-2xl border border-surface-container-high/60 shadow-lg">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCancelled ? 'bg-error/20 text-error' : 'bg-secondary-container text-secondary'}`}>
-            <span className="material-symbols-outlined text-[28px]">
-              {isCancelled ? 'cancel' : 'verified'}
-            </span>
-          </div>
-          <div>
-            <h1 className="font-headline-sm text-2xl font-bold text-white">
-              {isCancelled ? 'Reservation Cancelled & Refund Initiated' : 'Booking Confirmed & Ticket Issued!'}
-            </h1>
-            <p className="font-body-sm text-xs text-on-surface-variant">
-              Booking Reference (PNR):{' '}
-              <span className="font-mono text-tertiary font-bold tracking-widest text-sm">
-                {currentBooking?.bookingReference}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-variant hover:bg-surface-container-highest text-white text-xs font-bold transition-all cursor-pointer border border-outline-variant/30"
-          >
-            <span className="material-symbols-outlined text-[16px]">print</span>
-            <span>Print E-Ticket</span>
-          </button>
-          <button
-            onClick={onBackToDashboard}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary-container hover:bg-primary text-on-primary-container text-xs font-bold transition-all cursor-pointer shadow-md"
-          >
-            <span>Voyager Dashboard</span>
-            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-          </button>
-        </div>
+    <div className="w-full max-w-3xl mx-auto px-4 lg:px-8 py-8 flex flex-col gap-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap print:hidden">
+        <button onClick={onBackToBookings} className="flex items-center gap-1 text-sm text-primary font-semibold">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          My bookings
+        </button>
+        <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-surface-variant hover:bg-surface-container-highest text-on-surface text-sm font-semibold">
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Print
+        </button>
       </div>
 
-      {cancelStatus && (
-        <div className="p-4 rounded-xl bg-error/20 border border-error/30 text-error text-xs flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">info</span>
-          <span>{cancelStatus}</span>
+      {message && (
+        <div role="status" className={`p-3 rounded-md text-sm ${message.type === 'ok' ? 'bg-secondary-container text-secondary' : 'bg-error/20 border border-error/40 text-error'}`}>
+          {message.text}
         </div>
       )}
 
-      {/* Digital Boarding Pass Card */}
-      <div className="relative rounded-3xl overflow-hidden bg-surface-container-low border border-surface-container-high/80 shadow-2xl flex flex-col md:flex-row">
-        {/* Left Side: Ticket Main */}
-        <div className="flex-1 p-6 lg:p-8 flex flex-col justify-between gap-6 border-b md:border-b-0 md:border-r border-dashed border-outline-variant/40">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="font-headline-sm text-xl font-black text-white tracking-tight">Foxico</span>
-              <span className="font-label-sm text-[10px] text-tertiary uppercase tracking-widest font-bold">Boarding Pass</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-surface-variant text-secondary text-xs font-bold font-mono">
-              {currentBooking?.category || 'FLIGHT'}
+      <section className="rounded-lg bg-surface-container-low border border-surface-container-high overflow-hidden">
+        <div className="p-6 flex items-start justify-between gap-4 border-b border-dashed border-outline-variant/50 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-md bg-surface-variant flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined">{info.icon}</span>
+            </span>
+            <div>
+              <h1 className="text-xl font-extrabold text-on-surface">{info.title}</h1>
+              <p className="text-sm text-on-surface-variant">{info.route}</p>
             </div>
           </div>
-
-          {/* Route Display */}
-          <div className="flex items-center justify-between py-4">
-            <div>
-              <span className="text-3xl font-black text-white font-mono">
-                {currentBooking?.itemDetails?.origin}
-              </span>
-              <span className="block text-xs text-on-surface-variant mt-0.5">
-                {currentBooking?.itemDetails?.originCity}
-              </span>
-            </div>
-
-            <div className="flex-1 px-6 flex flex-col items-center">
-              <span className="material-symbols-outlined text-primary text-[28px]">
-                {currentBooking?.category === 'TRAIN' ? 'train' : currentBooking?.category === 'BUS' ? 'directions_bus' : currentBooking?.category === 'HOTEL' ? 'hotel' : 'flight'}
-              </span>
-              <div className="w-full h-0.5 bg-outline-variant my-1" />
-              <span className="text-[10px] font-mono text-tertiary">CONFIRMED MANIFEST</span>
-            </div>
-
-            <div className="text-right">
-              <span className="text-3xl font-black text-white font-mono">
-                {currentBooking?.itemDetails?.destination || currentBooking?.itemDetails?.city}
-              </span>
-              <span className="block text-xs text-on-surface-variant mt-0.5">
-                {currentBooking?.itemDetails?.destinationCity}
-              </span>
-            </div>
-          </div>
-
-          {/* Passenger & Seat Meta Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-surface-container-high/40 border border-surface-container-high/40 text-xs">
-            <div>
-              <span className="text-[10px] text-on-surface-variant uppercase font-bold block">Passenger</span>
-              <span className="font-bold text-white text-sm">
-                {currentBooking?.passengers?.[0]?.name}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-on-surface-variant uppercase font-bold block">Seat / Berth</span>
-              <span className="font-bold text-primary text-sm font-mono">
-                {currentBooking?.passengers?.[0]?.seatNumber}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-on-surface-variant uppercase font-bold block">Service / Flight</span>
-              <span className="font-bold text-white text-sm font-mono">
-                {currentBooking?.itemDetails?.flightNumber || currentBooking?.itemDetails?.trainNumber}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-on-surface-variant uppercase font-bold block">Gate / Platform</span>
-              <span className="font-bold text-tertiary text-sm font-mono">
-                Gate 14B
-              </span>
-            </div>
-          </div>
-
-          {/* Footer info */}
-          <div className="flex items-center justify-between text-xs text-on-surface-variant pt-2">
-            <span>Boarding: 45 Mins prior to departure</span>
-            <span className="font-mono text-secondary font-bold">Fast-Track Vault Biometrics</span>
+          <div className="text-right">
+            <span className="text-xs text-on-surface-variant block">Booking reference</span>
+            <span className="font-mono text-lg font-bold text-tertiary tracking-wider">{current.bookingReference}</span>
+            <span className={`mt-1 inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${statusTone(current.status)}`}>{statusLabel(current.status)}</span>
           </div>
         </div>
 
-        {/* Right Side: QR Code & Security Stub */}
-        <div className="w-full md:w-64 bg-surface-container/90 p-6 flex flex-col items-center justify-between gap-4 text-center">
-          <div className="flex flex-col items-center">
-            <span className="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">
-              Digital E-Manifest
-            </span>
-            <span className="text-xs font-bold text-white mt-1">Terminal Scanner</span>
-          </div>
+        <dl className="p-6 flex flex-col gap-2.5">
+          <Row label="Departure" value={d.departureTime ? `${formatDate(d.departureTime)}, ${formatTime(d.departureTime)}` : ''} />
+          <Row label="Arrival" value={d.arrivalTime ? `${formatDate(d.arrivalTime)}, ${formatTime(d.arrivalTime)}` : ''} />
+          <Row label="Class or coach" value={d.cabinClass || d.coach || d.roomType || d.busType} />
+          <Row label="Provider reference (PNR)" value={current.providerBookingRef} />
+        </dl>
 
-          {/* Dynamic Mock QR Code */}
-          <div className="w-36 h-36 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=FOXICO-VOYAGE-${currentBooking?.bookingReference}`}
-              alt="Boarding QR Code"
-              className="w-full h-full object-contain"
-            />
-          </div>
-
-          <div className="w-full">
-            <span className="font-mono text-[10px] text-on-surface-variant block tracking-widest uppercase">
-              UUID {currentBooking?._id?.slice(0, 12)}
-            </span>
-            <span className="font-label-sm text-[11px] text-secondary font-bold block mt-1">
-              STATUS: {currentBooking?.status || 'TICKET_ISSUED'}
-            </span>
-          </div>
-
-          {!isCancelled && (
-            <button
-              onClick={handleCancelBooking}
-              disabled={cancelling}
-              className="text-[11px] text-outline hover:text-error transition-colors uppercase font-bold mt-2 cursor-pointer"
-            >
-              {cancelling ? 'Cancelling...' : 'Cancel Reservation'}
-            </button>
-          )}
+        <div className="px-6 pb-6">
+          <h2 className="text-sm font-bold text-on-surface mb-2">Travellers</h2>
+          <ul className="flex flex-col gap-1.5">
+            {(current.passengers || []).map((pax, i) => (
+              <li key={i} className="flex items-center justify-between text-sm p-3 rounded-md bg-surface-container-high/60">
+                <span className="text-on-surface font-semibold">{pax.name || 'Traveller'}{pax.age ? `, ${pax.age}` : ''}</span>
+                <span className="text-on-surface-variant font-mono">{pax.seatNumber ? `Seat ${pax.seatNumber}` : ''}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+
+        <div className="px-6 pb-6">
+          <h2 className="text-sm font-bold text-on-surface mb-2">Fare</h2>
+          <dl className="flex flex-col gap-1.5">
+            <Row label="Base fare" value={formatINR(p.baseFare)} />
+            <Row label="Taxes" value={formatINR(p.taxes ?? p.tax)} />
+            <Row label="Service fee" value={formatINR(p.serviceFee ?? p.platformFee)} />
+            {(p.discountAmount ?? p.discount) > 0 && <Row label="Discount" value={`-${formatINR(p.discountAmount ?? p.discount)}`} />}
+            <div className="flex items-center justify-between pt-2 mt-1 border-t border-surface-container-high text-base">
+              <dt className="font-bold text-on-surface">Total</dt>
+              <dd className="font-extrabold text-on-surface">{formatINR(p.totalAmount)}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      {canCancel(current.status) && !cancelled && (
+        <div className="print:hidden">
+          <button onClick={handleCancel} disabled={cancelling} className="px-5 py-2.5 rounded-md border border-error/50 text-error hover:bg-error/10 text-sm font-semibold disabled:opacity-60">
+            {cancelling ? 'Cancelling' : 'Cancel booking'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

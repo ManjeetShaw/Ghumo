@@ -56,6 +56,15 @@ describe('Authentication & User Profile API Suite', () => {
       expect(dbUser.name).toBe(testUser.name);
     });
 
+    it('should ignore a role sent in the request and create a regular user', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Role Probe', email: `roleprobe_${Date.now()}@example.com`, password: 'SecurePassword123!', role: 'ADMIN' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.user.role).toBe('USER');
+    });
+
     it('should reject registration with an existing email', async () => {
       const res = await request(app)
         .post('/api/auth/register')

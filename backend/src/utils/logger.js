@@ -12,7 +12,7 @@ const logFormat = winston.format.combine(
 const logger = winston.createLogger({
   level: config.env === 'development' ? 'debug' : 'info',
   format: logFormat,
-  defaultMeta: { service: 'travel-superapp-backend' },
+  defaultMeta: { service: 'ghumo-backend' },
   transports: [
     new winston.transports.File({
       filename: path.join(__dirname, '../../logs/error.log'),

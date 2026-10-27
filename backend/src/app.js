@@ -22,21 +22,20 @@ const app = express();
 app.use(helmet());
 
 // CORS Configuration
-const allowedOrigins = [
+// Production: only the origins in CORS_ORIGINS. Requests with no Origin header
+// (same-origin calls through the frontend proxy, server to server calls) are always allowed.
+// Development and tests: local dev servers are allowed as well.
+const devOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
 ];
+const allowedOrigins = config.env === 'production' ? config.corsOrigins : [...devOrigins, ...config.corsOrigins];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, true); // Permissive in development
-    },
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
     credentials: true,
   })
 );
@@ -63,7 +62,7 @@ app.use(
   })
 );
 
-// Global Rate Limiting (100 requests per 15 minutes per IP)
+// Global rate limit: 200 requests per 15 minutes per IP
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,

@@ -1,18 +1,14 @@
 /**
- * Foxico AI Travel Super-App - Centralized API Service
- *
- * Talks ONLY to the real backend (Backend_Codebase) under /api — there is no
- * bundled mock server or demo data on the frontend anymore. This file also
- * acts as the single translation layer between the backend's canonical
- * response shapes (nested provider-normalized objects, Mongoose documents)
- * and the flatter shapes the existing pages were built against, so page
- * components don't need to be rewritten one by one.
+ * Central API service. Talks to the backend under /api and translates the
+ * backend's response shapes into the flatter shapes the pages use.
  */
+
+import { STORAGE_KEYS } from './config/site.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 function getAuthHeader() {
-  const token = localStorage.getItem('foxico_auth_token');
+  const token = localStorage.getItem(STORAGE_KEYS.token);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -32,13 +28,13 @@ async function request(endpoint, options = {}) {
   try {
     response = await fetch(url, { ...options, headers });
   } catch (networkErr) {
-    // Backend unreachable (not running / wrong VITE_API_URL / CORS). Surface
-    // this clearly instead of silently falling back to fake data.
+    // Backend unreachable (not running, wrong VITE_API_URL or CORS). Report it
+    // instead of falling back to made up data.
     return {
       success: false,
       error: {
         code: 'NETWORK_ERROR',
-        message: `Could not reach the backend at ${API_BASE_URL}${endpoint}. Is it running?`
+        message: 'Could not reach the server. Check your internet connection and try again.'
       }
     };
   }
@@ -57,7 +53,7 @@ async function request(endpoint, options = {}) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Normalizers: backend canonical shape -> shape the UI expects        */
+/* Normalizers: backend shape to the shape the UI expects              */
 /* ------------------------------------------------------------------ */
 
 function durationLabel(minutes) {
@@ -65,71 +61,6 @@ function durationLabel(minutes) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h}h ${m}m`;
-}
-
-// The backend's provider adapters only return a seat *count*, not a seat
-// map. Real GDS/PSS seat maps are a whole feature the mock providers don't
-// model yet, so we deterministically synthesize a plausible map from the
-// available-seats count purely for the seat-picker UI. This is clearly
-// synthetic, not vendor data — swap this out once a provider that returns
-// real seat maps is wired in.
-function seedHash(seed = '') {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return hash;
-}
-
-function synthesizeFlightSeatLayout(seatsAvailable, basePrice, seed) {
-  const cols = ['A', 'B', 'C', 'D', 'E', 'F'];
-  const hash = seedHash(seed);
-  const seats = [];
-  let i = 0;
-  for (let row = 1; row <= 6; row++) {
-    for (const col of cols) {
-      const pseudoRandom = ((hash + i * 17) % 100) / 100;
-      const occupied = pseudoRandom > Math.min(0.9, (seatsAvailable || 9) / 24);
-      seats.push({
-        number: `${row}${col}`,
-        status: occupied ? 'occupied' : 'available',
-        price: basePrice
-      });
-      i++;
-    }
-  }
-  return seats;
-}
-
-function synthesizeBerths(seatsAvailable, seed) {
-  const types = ['Lower Berth', 'Middle Berth', 'Upper Berth', 'Side Lower', 'Side Upper'];
-  const hash = seedHash(seed);
-  const berths = [];
-  for (let i = 0; i < 12; i++) {
-    const pseudoRandom = ((hash + i * 23) % 100) / 100;
-    const occupied = pseudoRandom > Math.min(0.9, (seatsAvailable || 20) / 40);
-    berths.push({
-      number: `${Math.floor(i / 3) + 1}${['A', 'B', 'C'][i % 3]}`,
-      type: types[i % types.length],
-      status: occupied ? 'occupied' : 'available'
-    });
-  }
-  return berths;
-}
-
-function synthesizeBusSeats(seatsAvailable, fare, seed) {
-  const types = ['Single Sleeper (Window)', 'Double Sleeper', 'Aisle Seater'];
-  const hash = seedHash(seed);
-  const seats = [];
-  for (let i = 0; i < 10; i++) {
-    const pseudoRandom = ((hash + i * 13) % 100) / 100;
-    const occupied = pseudoRandom > Math.min(0.9, (seatsAvailable || 15) / 20);
-    seats.push({
-      seat: `${i % 2 === 0 ? 'L' : 'U'}${Math.floor(i / 2) + 1}`,
-      type: types[i % types.length],
-      status: occupied ? 'occupied' : 'available',
-      price: fare
-    });
-  }
-  return seats;
 }
 
 function normalizeFlight(f) {
@@ -159,8 +90,7 @@ function normalizeFlight(f) {
       tax: f.price?.taxes,
       total: f.price?.total,
       currency: f.price?.currency || 'INR'
-    },
-    seatLayout: synthesizeFlightSeatLayout(f.seatsAvailable, f.price?.total, f.id)
+    }
   };
 }
 
@@ -185,8 +115,7 @@ function normalizeTrain(t) {
       fare: c.fare,
       availableBerths: c.seatsAvailable,
       status: c.status
-    })),
-    berths: synthesizeBerths(t.classes?.[0]?.seatsAvailable, t.id)
+    }))
   };
 }
 
@@ -205,12 +134,10 @@ function normalizeBus(b) {
     arrivalTime: b.arrivalTime,
     duration: durationLabel(b.durationMinutes),
     durationMinutes: b.durationMinutes,
-    rating: b.rating,
     fare: b.fare,
     seatsAvailable: b.seatsAvailable,
     boardingPoints: b.origin?.boardingPoint ? [b.origin.boardingPoint] : [],
-    droppingPoints: b.destination?.dropoffPoint ? [b.destination.dropoffPoint] : [],
-    seatMatrix: synthesizeBusSeats(b.seatsAvailable, b.fare, b.id)
+    droppingPoints: b.destination?.dropoffPoint ? [b.destination.dropoffPoint] : []
   };
 }
 
@@ -224,9 +151,6 @@ function normalizeHotel(h) {
     city: h.location?.city,
     country: h.location?.country,
     address: h.location?.address,
-    starRating: Math.round(h.rating || 4),
-    guestRating: h.rating,
-    reviewsCount: h.reviewsCount,
     pricePerNight: cheapestRoom?.farePerNight,
     currency: cheapestRoom?.currency || 'INR',
     roomType: cheapestRoom?.name,
@@ -280,7 +204,7 @@ function normalizeBooking(b) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Public API surface (unchanged signatures - pages don't need edits)  */
+/* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
 export const authApi = {
@@ -395,7 +319,7 @@ export const bookingApi = {
         details: {
           ...itemDetails,
           id: itemDetails?.id || vendorItemId,
-          // Backend prices from details.price.base (see booking.service.js)
+          // The backend prices the booking from details.price.base
           price: { base: bookingPayload.pricing?.baseFare }
         },
         passengers,
@@ -422,15 +346,6 @@ export const bookingApi = {
 
   async getBookingById(id) {
     const res = await request(`/bookings/${id}`);
-    if (res.success && res.data?.booking) return { ...res, data: normalizeBooking(res.data.booking) };
-    return res;
-  },
-
-  async confirmBooking(id, paymentDetails = {}) {
-    const res = await request(`/bookings/${id}/confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ paymentDetails })
-    });
     if (res.success && res.data?.booking) return { ...res, data: normalizeBooking(res.data.booking) };
     return res;
   },
@@ -489,8 +404,8 @@ export const tripApi = {
       method: 'POST',
       body: JSON.stringify(itemData)
     });
-    // Backend returns the whole updated trip; pages consuming this call
-    // only want the newly-added item, so hand back the last itinerary entry.
+    // The backend returns the whole updated trip. Pages only want the new item,
+    // so hand back the last itinerary entry.
     if (res.success && res.data?.trip) {
       const itin = res.data.trip.itinerary || [];
       return { ...res, data: itin[itin.length - 1] || null, trip: normalizeTrip(res.data.trip) };
@@ -581,8 +496,3 @@ export const aiApi = {
   }
 };
 
-export const healthApi = {
-  async getHealth() {
-    return request('/health');
-  }
-};

@@ -2,7 +2,8 @@ const User = require('../models/user.model');
 const { generateToken } = require('../utils/jwt');
 
 class AuthService {
-  async register({ name, email, password, role = 'USER', phone = '', preferences = {} }) {
+  // The role is never taken from the request. New accounts are always regular users.
+  async register({ name, email, password, phone = '', preferences = {} }) {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       const error = new Error('User with this email already exists');
@@ -15,7 +16,7 @@ class AuthService {
       name,
       email,
       passwordHash: password,
-      role,
+      role: 'USER',
       phone,
       preferences,
     });

@@ -5,6 +5,7 @@ const { getRedisClient, closeRedis } = require('../src/config/redis');
 const User = require('../src/models/user.model');
 const Booking = require('../src/models/booking.model');
 const bookingStateMachine = require('../src/services/bookingStateMachine');
+const bookingService = require('../src/services/booking.service');
 const { generateToken } = require('../src/utils/jwt');
 
 describe('Booking Engine & Booking State Machine API Suite', () => {
@@ -67,7 +68,7 @@ describe('Booking Engine & Booking State Machine API Suite', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.booking.bookingReference).toMatch(/^TRV-2026-/);
+      expect(res.body.data.booking.bookingReference).toMatch(/^TRV-\d{4}-/);
       expect(res.body.data.booking.status).toBe('PAYMENT_PENDING');
       expect(res.body.data.booking.pricing.totalAmount).toBe(4230); // 4000 base + 480 tax + 150 fee - 400 coupon
 
@@ -95,16 +96,24 @@ describe('Booking Engine & Booking State Machine API Suite', () => {
     });
   });
 
-  describe('POST /api/bookings/:id/confirm (Confirm Booking)', () => {
-    it('should transition through state machine to CONFIRMED and TICKET_ISSUED with PNR', async () => {
+  describe('Confirming a booking', () => {
+    it('does not expose a public confirm endpoint (tickets are issued only after verified payment)', async () => {
       const res = await request(app)
         .post(`/api/bookings/${createdBookingId}/confirm`)
         .set('Authorization', `Bearer ${tokenA}`);
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.booking.status).toBe('TICKET_ISSUED');
-      expect(res.body.data.booking.providerBookingRef).toMatch(/^PNR-/);
+      expect(res.status).toBe(404);
+      const booking = await Booking.findById(createdBookingId);
+      expect(booking.status).toBe('PAYMENT_PENDING');
+    });
+
+    it('moves a paid booking through the state machine to TICKET_ISSUED with a PNR', async () => {
+      await Booking.findByIdAndUpdate(createdBookingId, { status: 'PAYMENT_SUCCESS' });
+
+      const booking = await bookingService.confirmBooking(createdBookingId);
+
+      expect(booking.status).toBe('TICKET_ISSUED');
+      expect(booking.providerBookingRef).toMatch(/^PNR-/);
     });
   });
 

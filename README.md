@@ -1,39 +1,38 @@
-# Foxico AI Travel Super-App
+# Ghumo
 
-```
-foxico/
-├── frontend/   React 19 + Vite + Tailwind. Serves the UI and proxies /api/* to the backend.
-└── backend/    Node/Express + MongoDB + Redis (BullMQ). Auth, search, bookings, payments, trips, AI.
-```
+Search and book flights, trains, buses and hotels for travel within India.
+
+- `frontend/` React 19, Vite and Tailwind. `server.ts` serves the build and forwards `/api` to the backend.
+- `backend/` Express, MongoDB, Redis and BullMQ. Razorpay for payments, Gemini for plain language search and the trip planner.
 
 ## Run locally
-Needs Node 20+, MongoDB and Redis running.
+
+Requirements: Node 18 or newer, MongoDB, Redis.
 
 ```bash
-# 1) backend  (http://localhost:5000)
+# backend
 cd backend
-cp .env.example .env      # fill in JWT_SECRET, GEMINI_API_KEY, RAZORPAY_* (see comments in the file)
+cp .env.example .env      # then fill in the values
 npm install
 npm run dev
 
-# 2) frontend (http://localhost:3000)
+# frontend, in a second terminal
 cd frontend
-cp .env.example .env      # BACKEND_URL=http://localhost:5000
+cp .env.example .env
 npm install
 npm run dev
 ```
 
-The browser only talks to the frontend origin; `frontend/server.ts` forwards every `/api/*`
-request to `BACKEND_URL`. There is no mock API or demo data in the frontend.
+The site is at http://localhost:3000 and the API at http://localhost:5000/api.
 
-## Production
-```bash
-cd frontend && npm install && npm run build && npm start   # serves dist/ and proxies /api
-cd backend  && npm install && npm start
-```
-Razorpay webhook: `https://<backend>/api/payments/webhook` (events `payment.captured`, `payment.failed`),
-secret goes in `RAZORPAY_WEBHOOK_SECRET`.
+Backend tests: `cd backend && npm test`.
 
-## Still sample data
-Flights, trains, buses and hotels come from the adapters in `backend/src/providers/adapters/` (Mock*).
-Replace them with real providers behind the same `BaseProvider` interface.
+## Before launch
+
+1. Fill in the legal and contact details in `frontend/src/config/site.js`. The Privacy Policy and Terms pages show a red notice for every field that is still empty.
+2. The home page shows the places in `frontend/src/data/destinations.js` that have `photo: true`. Photos live in `frontend/public/images/destinations/` (3:2 landscape, about 1200 x 800, under 250 KB). To add a place, add its photo as `<slug>.jpg` and set `photo: true`. Use photos you own or have a licence for.
+3. Point your domain at the deployment, serve over HTTPS, and set `CORS_ORIGINS` if the frontend and API are on different origins.
+4. Set `JWT_SECRET` and the Razorpay keys. In production the backend refuses to start without `JWT_SECRET`.
+5. Replace the sample data providers with real ones. Until then every search returns built in sample results and every booking is issued by a mock provider.
+6. Decide the cancellation and refund policy, then connect refunds. Cancelling currently moves a booking to `REFUND_PENDING` and nothing processes the refund yet.
+7. Have the Privacy Policy and Terms reviewed by a lawyer.

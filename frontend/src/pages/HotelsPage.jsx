@@ -1,203 +1,125 @@
 import React, { useState, useEffect } from 'react';
 import { searchApi } from '../api.js';
+import { PLACES } from '../data/places.js';
+import { formatINR } from '../utils/date.js';
+import { inputClass, labelClass, primaryButton, PageHeader, ErrorNote, EmptyNote, Loading, FareNote } from '../components/ui.jsx';
 
-export default function HotelsPage({ onProceedToCheckout }) {
-  const [city, setCity] = useState('');
-  const [minRating, setMinRating] = useState(4.5);
-  const [maxPrice, setMaxPrice] = useState(50000);
+function HotelImage({ src, name }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return <div className="w-full md:w-56 h-40 md:h-auto bg-surface-container-high shrink-0" role="img" aria-label={name} />;
+  }
+  return <img src={src} alt={name} loading="lazy" onError={() => setFailed(true)} className="w-full md:w-56 h-40 md:h-auto object-cover shrink-0" />;
+}
+
+export default function HotelsPage({ initial, onProceedToCheckout }) {
+  const [city, setCity] = useState(initial?.city || 'Delhi');
+  const [nights, setNights] = useState(2);
+  const [maxPrice, setMaxPrice] = useState('');
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [nights, setNights] = useState(4);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchHotels();
-  }, [city, minRating, maxPrice]);
-
-  async function fetchHotels() {
+  async function runSearch() {
     setLoading(true);
+    setError('');
     try {
-      const res = await searchApi.searchHotels({ city, minRating, maxPrice });
-      if (res.success && res.data) {
-        setHotels(res.data);
-      }
+      const res = await searchApi.searchHotels({ city: city.trim() });
+      if (res.success) setHotels(res.data || []);
+      else setError(res.error?.message || 'Could not search hotels.');
     } catch (err) {
-      console.error('Failed to search hotels:', err);
+      setError('Could not search hotels. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  const handleBookHotel = (hotel) => {
-    const total = hotel.pricePerNight * nights;
-    const base = total;
-    const tax = 0;
+  useEffect(() => {
+    runSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const visible = hotels
+    .filter((h) => !maxPrice || (h.pricePerNight || 0) <= Number(maxPrice))
+    .sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
+
+  const handleBook = (hotel, room) => {
     onProceedToCheckout?.({
       category: 'HOTEL',
       vendorItemId: hotel.id,
       itemDetails: {
         name: hotel.name,
         city: hotel.city,
-        country: hotel.country,
-        roomType: hotel.roomType,
-                durationNights: nights
+        roomType: room.name,
+        durationNights: nights,
       },
       passengers: [{}],
-      pricing: {
-        baseFare: base,
-        tax: tax,
-        platformFee: 0,
-        discount: 0,
-        totalAmount: total,
-        currency: 'INR'
-      }
+      pricing: { baseFare: room.farePerNight * nights, currency: 'INR' },
     });
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 lg:px-8 py-8 flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-tertiary uppercase tracking-widest">
-            <span className="material-symbols-outlined text-[16px]">hotel</span>
-            Curated Global Sanctuaries
-          </div>
-          <h1 className="font-headline-lg text-3xl font-extrabold text-on-surface mt-1">
-            Luxury Stays & Heritage Sanctuaries
-          </h1>
-          <p className="font-body-md text-xs text-on-surface-variant mt-1">
-            Private pool villas in Bali, heritage palaces in Rajasthan, and mist estate pavilions in Kerala.
-          </p>
-        </div>
+    <div className="w-full max-w-5xl mx-auto px-4 lg:px-8 py-8 flex flex-col gap-6">
+      <PageHeader title="Hotels" subtitle="Find a place to stay in an Indian city." />
+      <datalist id="hotel-cities">{PLACES.map((p) => <option key={p.city} value={p.city} />)}</datalist>
 
-        <div className="flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-full border border-surface-container-high">
-          <span className="material-symbols-outlined text-[18px] text-tertiary">diamond</span>
-          <span className="font-label-sm text-xs text-on-surface font-semibold">5-Star Verified Properties</span>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="p-4 rounded-2xl bg-surface-container-low/90 backdrop-blur-xl border border-surface-container-high/60 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+      <form
+        onSubmit={(e) => { e.preventDefault(); runSearch(); }}
+        className="p-4 rounded-lg bg-surface-container-low border border-surface-container-high grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end"
+      >
         <div>
-          <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block font-bold mb-1">Destination City</label>
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full bg-surface-container-high px-3 py-2 rounded-xl text-white font-title-md text-sm border border-surface-container-high focus:outline-none"
-            placeholder="Bali, Munnar, Jaipur..."
-          />
+          <label htmlFor="h-city" className={labelClass}>City</label>
+          <input id="h-city" list="hotel-cities" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} required />
         </div>
-
         <div>
-          <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block font-bold mb-1">Stay Duration</label>
-          <select
-            value={nights}
-            onChange={(e) => setNights(Number(e.target.value))}
-            className="w-full bg-surface-container-high px-3 py-2 rounded-xl text-white font-title-md text-xs border border-surface-container-high focus:outline-none"
-          >
-            <option value="2">2 Nights Getaway</option>
-            <option value="3">3 Nights Retreat</option>
-            <option value="4">4 Nights Sanctuary</option>
-            <option value="7">7 Nights Grand Tour</option>
+          <label htmlFor="h-nights" className={labelClass}>Nights</label>
+          <select id="h-nights" value={nights} onChange={(e) => setNights(Number(e.target.value))} className={inputClass}>
+            {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-
         <div>
-          <label className="text-[10px] text-on-surface-variant uppercase tracking-wider block font-bold mb-1">Max Nightly Rate: ₹{maxPrice}</label>
-          <input
-            type="range"
-            min="5000"
-            max="60000"
-            step="2000"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-            className="w-full accent-primary"
-          />
+          <label htmlFor="h-max" className={labelClass}>Max per night (₹)</label>
+          <input id="h-max" type="number" min="0" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="No limit" className={inputClass} />
         </div>
+        <button type="submit" disabled={loading} className={primaryButton}>Search</button>
+      </form>
 
-        <div className="flex items-end">
-          <button
-            onClick={fetchHotels}
-            className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-title-md text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">search</span>
-            <span>Refresh Stays</span>
-          </button>
-        </div>
-      </div>
+      <FareNote />
+      <ErrorNote>{error}</ErrorNote>
 
-      {/* Grid of Luxury Stays */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {hotels.map((h) => (
-          <div
-            key={h.id}
-            className="group rounded-2xl overflow-hidden bg-surface-container-low shadow-xl border border-surface-container-high/60 flex flex-col justify-between transition-all hover:-translate-y-1 hover:border-primary/40"
-          >
-            {/* Image Thumbnail */}
-            <div className="relative h-60 w-full overflow-hidden bg-surface-variant">
-              <div
-                className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-700"
-                style={{ backgroundImage: `url('${h.image}')` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-transparent" />
-              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-surface-dim/80 backdrop-blur-md text-tertiary font-label-sm text-xs font-semibold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">stars</span>
-                {h.starRating} Star Luxury
-              </div>
-              <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-surface-dim/80 backdrop-blur-md text-white font-title-md text-xs font-bold flex items-center gap-1">
-                <span className="material-symbols-outlined text-tertiary text-[14px]">star</span>
-                {h.guestRating} ({h.reviewsCount})
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 flex flex-col gap-4 flex-1 justify-between">
-              <div>
-                <span className="font-label-sm text-[11px] text-secondary font-bold uppercase tracking-wider">
-                  {h.city}, {h.country}
-                </span>
-                <h3 className="font-headline-sm text-xl font-bold text-white mt-1 group-hover:text-primary transition-colors">
-                  {h.name}
-                </h3>
-                <p className="font-body-sm text-xs text-on-surface-variant mt-1">{h.roomType}</p>
-
-                {/* Amenities Badges */}
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {h.amenities?.map((amenity, i) => (
-                    <span
-                      key={i}
-                      className="px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-medium"
-                    >
-                      {amenity}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price & Action */}
-              <div className="pt-4 border-t border-surface-container-high/60 flex items-center justify-between">
+      {loading ? (
+        <Loading />
+      ) : visible.length === 0 && !error ? (
+        <EmptyNote title="No hotels found">Try another city or remove the price limit.</EmptyNote>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {visible.map((h) => (
+            <li key={h.id} className="rounded-lg overflow-hidden bg-surface-container-low border border-surface-container-high flex flex-col md:flex-row">
+              <HotelImage src={h.image} name={h.name} />
+              <div className="p-5 flex-1 flex flex-col gap-3 min-w-0">
                 <div>
-                  <span className="text-[11px] text-on-surface-variant block">For {nights} Nights:</span>
-                  <div className="font-headline-sm text-xl font-bold text-tertiary">
-                    ₹{h.pricePerNight * nights}
-                  </div>
-                  <span className="text-[10px] text-secondary">₹{h.pricePerNight} / night</span>
+                  <h2 className="text-lg font-bold text-on-surface">{h.name}</h2>
+                  <p className="text-sm text-on-surface-variant">{[h.address, h.city].filter(Boolean).join(', ')}</p>
                 </div>
-
-                <button
-                  onClick={() => handleBookHotel(h)}
-                  className="py-2.5 px-5 rounded-full bg-primary-container hover:bg-primary text-on-primary-container hover:text-on-primary font-title-md text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Reserve Villa</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </button>
+                {h.amenities?.length > 0 && (
+                  <p className="text-xs text-on-surface-variant">{h.amenities.slice(0, 6).join(' · ')}</p>
+                )}
+                <ul className="flex flex-col gap-2">
+                  {(h.roomTypes || []).map((room) => (
+                    <li key={room.name} className="p-3 rounded-md bg-surface-container-high/60 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-on-surface">{room.name}</div>
+                        <div className="text-xs text-on-surface-variant">{formatINR(room.farePerNight)} per night, {formatINR(room.farePerNight * nights)} for {nights} night{nights > 1 ? 's' : ''}</div>
+                      </div>
+                      <button onClick={() => handleBook(h, room)} className="px-3 py-1.5 rounded-md bg-primary-container hover:bg-primary text-on-primary-container text-xs font-bold shrink-0">Book</button>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

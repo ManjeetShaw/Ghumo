@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/ai.controller');
-const { authenticateToken, optionalAuth } = require('../middleware/auth.middleware');
+const { optionalAuth } = require('../middleware/auth.middleware');
 
 // Public or optional auth for NL travel search
 router.post('/travel-search', optionalAuth, (req, res, next) => aiController.parseNaturalLanguageSearch(req, res, next));

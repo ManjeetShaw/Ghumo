@@ -1,7 +1,7 @@
 {
-  "name": "travel-superapp-backend",
+  "name": "ghumo-backend",
   "version": "1.0.0",
-  "description": "Autonomous AI Travel Super-App Backend API",
+  "description": "Backend API for Ghumo, a travel booking site for India",
   "main": "src/server.js",
   "type": "commonjs",
   "engines": {

@@ -28,8 +28,8 @@ function normalizeHotel(rawHotel, providerId) {
         lng: rawHotel.lng || rawHotel.longitude || 72.8332,
       },
     },
-    rating: rawHotel.rating || rawHotel.starRating || 4.8,
-    reviewsCount: rawHotel.reviewsCount || 1240,
+    rating: rawHotel.rating ?? rawHotel.starRating ?? null,
+    reviewsCount: rawHotel.reviewsCount ?? null,
     amenities: rawHotel.amenities || ['Swimming Pool', 'Spa', 'Gym', 'Restaurant', 'Free Parking', 'Airport Shuttle'],
     roomTypes: normalizedRooms.length > 0 ? normalizedRooms : [
       {
@@ -51,7 +51,7 @@ function normalizeHotel(rawHotel, providerId) {
         availableRooms: 2,
       },
     ],
-    images: rawHotel.images || ['https://images.unsplash.com/photo-1566073771259-6a8506099945'],
+    images: rawHotel.images || [],
     raw: rawHotel,
   };
 }

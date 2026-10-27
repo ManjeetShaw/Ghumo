@@ -10,9 +10,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
-// This server contains NO API routes and NO demo/mock data. Every /api/*
-// request is forwarded to the real backend (Backend_Codebase) at BACKEND_URL,
-// so the browser only ever talks to one origin.
+// This server has no API routes of its own. Every /api request is forwarded
+// to the backend at BACKEND_URL, so the browser only talks to one origin.
+app.disable('x-powered-by');
 app.use(
   '/api',
   createProxyMiddleware({
@@ -38,7 +38,7 @@ async function startServer() {
   }
 
   app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`Foxico frontend on http://0.0.0.0:${PORT}  (/api -> ${BACKEND_URL})`);
+    console.log(`Ghumo frontend listening on port ${PORT}, forwarding /api to ${BACKEND_URL}`);
   });
 }
 

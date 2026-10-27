@@ -16,11 +16,8 @@ async function startServer() {
 
     // 3. Start Express HTTP Server
     server = app.listen(config.port, () => {
-      logger.info(`=======================================================`);
-      logger.info(`🚀 Travel Super-App Backend running on port ${config.port}`);
-      logger.info(`🌐 Environment: ${config.env}`);
-      logger.info(`🏥 Health Check: http://localhost:${config.port}/api/health`);
-      logger.info(`=======================================================`);
+      logger.info(`Ghumo backend listening on port ${config.port} (${config.env})`);
+      logger.info(`Health check: http://localhost:${config.port}/api/health`);
     });
 
     // Timeout adjustments for long-running AI / Provider API calls
